@@ -1,10 +1,12 @@
 import os
 from dotenv import load_dotenv
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import GoogleGenerativeAI,GoogleGenerativeAIEmbeddings
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_pinecone import PineconeVectorStore
-
+from operator import itemgetter
 load_dotenv()
 
 print("Initializing components...")
@@ -41,6 +43,15 @@ def retrival_chain_without_lcel(query:str):
     response = llm.invoke(prompt)
     return response
 
+def retrival_chain_with_lcel():
+    """A simple retrival chain with LCEl""" 
+    retrival_chain =  ( RunnablePassthrough.assign(context= itemgetter("question")| retriver | format_docs) 
+                       | promt_template 
+                       | llm 
+                       | StrOutputParser()) 
+
+    return retrival_chain
+
 
 if __name__ == "__main__":
     print("Retriving...")
@@ -65,3 +76,11 @@ if __name__ == "__main__":
     result_with_rag = retrival_chain_without_lcel(question)
     print("Answer with RAG:")
     print(result_with_rag)
+
+    print ("\n" + "=" * 70)
+    print("RAW invocation with RAG and LCEL")
+    print("=" * 70 + "\n")
+    chain_with_lcel = retrival_chain_with_lcel()
+    result_with_lcel = chain_with_lcel.invoke({"question": question})
+    print("Answer with RAG and LCEL:")
+    print(result_with_lcel)
